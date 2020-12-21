@@ -51,7 +51,8 @@ with torch.no_grad():
     # detect images
     if cfg.image is not None:
         dataset = COCODetection(cfg, mode='detect')
-        data_loader = data.DataLoader(dataset, 1, num_workers=4, shuffle=False,
+        # my machine didn't support the multi thread, num_workers changed from 4 to 0
+        data_loader = data.DataLoader(dataset, 1, num_workers=0, shuffle=False,
                                       pin_memory=True, collate_fn=detect_collate)
         ds = len(data_loader)
         progress_bar = ProgressBar(40, ds)

@@ -12,3 +12,9 @@ tensorboard_log/
 build_stuff/build
 *.c
 *.so
+
+.DS_Store
+*.jpg
+*.png
+build/
+learn_torch/
