@@ -17,4 +17,3 @@ build_stuff/build
 *.jpg
 *.png
 build/
-learn_torch/
