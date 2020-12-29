@@ -208,6 +208,7 @@ def to_train_size(img, masks, boxes, labels, train_size):
         return crop(img_size, train_size, img_size, train_size, img, masks, boxes, labels)
 
 
+# Color image loaded by OpenCV is in BGR mode. But Matplotlib displays in RGB mode.
 def normalize_and_toRGB(img):
     img = (img - norm_mean) / norm_std
     img = img[:, :, (2, 1, 0)]

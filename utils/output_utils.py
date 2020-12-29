@@ -4,7 +4,7 @@ from utils.box_utils import crop, decode, jaccard
 import torch
 import numpy as np
 from config import COLORS
-from cython_nms import nms as cnms
+from cython_nms import nms as cnms  # this is built by cython, use to calculate the IoU
 
 
 def fast_nms(box_thre, coef_thre, class_thre, cfg, second_threshold=False):
