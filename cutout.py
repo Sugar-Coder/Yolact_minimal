@@ -24,6 +24,7 @@ from utils.output_utils import nms, after_nms, draw_img
 
 os.makedirs('results/json', exist_ok=True)
 
+# 默认从images文件夹下读取图片进行切割，保存到results文件夹下
 parser = argparse.ArgumentParser(description='YOLACT Detection.')
 parser.add_argument('--background', default=False, action='store_true', help='Is the image is background, only output the bbox')
 parser.add_argument('--weight', default='weights/best_29.3_res50_coco_400001.pth', type=str, help='The model for detection.')
@@ -85,43 +86,45 @@ def saveBackground(ids_p, class_p, box_p, img_name):
 
     f = open(f'results/json/{img_name}_background.json', 'a')
 
+    data = []
     for i, COCOID in enumerate(ids_p):
-        data = {"id": COCO_CLASSES[COCOID],
+        data.append({"id": COCO_CLASSES[COCOID],
                 "score": str(class_p[i]),
-                "bbox": box_p[i].tolist()}
-        json.dump(data, f)
+                "bbox": box_p[i].tolist()})
 
+    json.dump(data, f)
     print(f'{f.name} created.')
     f.close()
 
 
-with torch.no_grad():
-    # detect the image
-    if cfg.image is not None:
-        # 待识别图片
-        dataset = COCODetection(cfg, mode='detect')  # Map-Style dataset
-        data_loader = data.DataLoader(dataset, 1, num_workers=0, shuffle=False,
-                                      pin_memory=True, collate_fn=detect_collate)
+if __name__ == "__main__":
+    with torch.no_grad():
+        # detect the image
+        if cfg.image is not None:
+            # 待识别图片
+            dataset = COCODetection(cfg, mode='detect')  # Map-Style dataset
+            data_loader = data.DataLoader(dataset, 1, num_workers=0, shuffle=False,
+                                          pin_memory=True, collate_fn=detect_collate)
 
-        # img是被正规化的550 * 550图片，img_origin是从cv2中读取的BGR图片
-        for i, (img, img_origin, img_name) in enumerate(data_loader):
-            img_name = img_name.split('.')[0]
-            print("the {} image : {}".format(i, img_name))
-            print("img size:", img.shape)
-            img_h, img_w = img_origin.shape[0:2]
+            # img是被正规化的550 * 550图片，img_origin是从cv2中读取的BGR图片
+            for i, (img, img_origin, img_name) in enumerate(data_loader):
+                img_name = img_name.split('.')[0]  # only save the filename
+                print("the {} image : {}".format(i, img_name))
+                print("img size:", img.shape)
+                img_h, img_w = img_origin.shape[0:2]
 
-            class_p, box_p, coef_p, proto_p, anchors = net(img)
-            ids_p, class_p, box_p, coef_p, proto_p = nms(class_p, box_p, coef_p, proto_p, anchors, cfg)
-            ids_p, class_p, boxes_p, masks_p = after_nms(ids_p, class_p, box_p, coef_p,
-                                                         proto_p, img_h, img_w, cfg, img_name=img_name)
-            # 种类id, 置信度，bbox[n, 4]，mask[n, img_h, img_w]
-            print(ids_p.shape, class_p.shape, boxes_p.shape, masks_p.shape)
+                class_p, box_p, coef_p, proto_p, anchors = net(img)
+                ids_p, class_p, box_p, coef_p, proto_p = nms(class_p, box_p, coef_p, proto_p, anchors, cfg)
+                ids_p, class_p, boxes_p, masks_p = after_nms(ids_p, class_p, box_p, coef_p,
+                                                             proto_p, img_h, img_w, cfg, img_name=img_name)
+                # 种类id, 置信度，bbox[n, 4]，mask[n, img_h, img_w]
+                print(ids_p.shape, class_p.shape, boxes_p.shape, masks_p.shape)
 
-            if args.background:
-                saveBackground(ids_p, class_p, boxes_p, img_name)
-            else:
-                save(ids_p, class_p, boxes_p, masks_p, img_name)
+                if args.background:
+                    saveBackground(ids_p, class_p, boxes_p, img_name)
+                else:
+                    save(ids_p, class_p, boxes_p, masks_p, img_name)
 
-            # output the image
-            img_numpy = draw_img(ids_p, class_p, boxes_p, masks_p, img_origin, cfg, img_name=img_name)
-            cv2.imwrite(f'results/images/{img_name}.jpg', img_numpy)
+                # output the image with masks and bounding boxes
+                img_numpy = draw_img(ids_p, class_p, boxes_p, masks_p, img_origin, cfg, img_name=img_name)
+                cv2.imwrite(f'results/images/{img_name}.jpg', img_numpy)

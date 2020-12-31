@@ -9,6 +9,10 @@ import skimage.transform as transform
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
+"""
+将手工扣图的对象去掉白底后插入的目标图片上，但存在mask有缺陷的情况
+"""
+
 
 # 对插入对象的变换
 def foregroundAug(foreground):
