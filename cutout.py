@@ -122,6 +122,7 @@ if __name__ == "__main__":
 
                 if args.background:
                     saveBackground(ids_p, class_p, boxes_p, img_name)
+                    cfg.cutout = False
                 else:
                     save(ids_p, class_p, boxes_p, masks_p, img_name)
 
