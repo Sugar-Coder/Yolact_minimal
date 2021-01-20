@@ -19,3 +19,4 @@ build_stuff/build
 *.png
 build/
 learn_torch/
+*.pt

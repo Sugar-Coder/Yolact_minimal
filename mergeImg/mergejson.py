@@ -10,26 +10,28 @@ import logging
 
 import skimage.io as io
 import skimage.transform as transform
+from skimage import img_as_ubyte
 import matplotlib.pyplot as plt
 import numpy as np
-
 
 logging.basicConfig(level=logging.INFO)
 os.makedirs('../results/synthesis', exist_ok=True)
 
 
-def loadObjImageInfo(fileprefix='nadaer'):
+def loadObjImageInfo(filepath='../results/json/', fileprefix='nadaer'):
     """
     A generator, every time called return one object's image and its information
     从images文件夹下面读取指定文件前缀的图片,作为提取对象的源
     @return: cutout后的小图片，类别，置信度，边界框
     """
-    fileprefix = fileprefix.split('.')[0]
-    imgFiles = glob.glob(f'../results/images/{fileprefix}_*.jpg')
-    for i in range(len(imgFiles)):
+    originfile = fileprefix.split('_')[0]
+    imgFiles = glob.glob(f'{filepath}{fileprefix}_*.json')
+    for i in range(len(imgFiles)+1):
         print(f'{fileprefix}_{i} loaded.')
-        objectImg = io.imread(f'../results/images/{fileprefix}_{i}.jpg')  # cutout后的合成的时候其实不需要
-        f = open(f'../results/json/{fileprefix}_{i}.json', "r")
+        # objectImg = io.imread(f'{filepath}/../images/{originfile}_{i}.jpg')  # cutout后的合成的时候其实不需要
+        # plt.imshow(objectImg)
+        # plt.show()
+        f = open(f'{filepath}{fileprefix}_{i}.json', "r")
         data = json.load(f)
         f.close()
         category = data['id']
@@ -37,7 +39,7 @@ def loadObjImageInfo(fileprefix='nadaer'):
         mask = np.array(mask)
         bbox = data['bbox']
         score = float(data['score'])
-        yield objectImg, category, score, bbox, mask
+        yield category, score, bbox, mask
 
 
 def guidedInsertion(bgSize, bBoxes, box):
@@ -46,6 +48,8 @@ def guidedInsertion(bgSize, bBoxes, box):
     """
     objWidth = box[2] - box[0]  # x2 - x1
     objHeight = box[3] - box[1]  # y2 - y1
+    print(f'the background width:{bgSize[1]} height:{bgSize[0]}')
+    print(f'the obj width:{objWidth} height: {objHeight}')
 
     def checkIntersect(bx, by):
         """
@@ -64,9 +68,8 @@ def guidedInsertion(bgSize, bBoxes, box):
                     return False
         return True
 
-
     while True:
-        bgObjBox = bBoxes[random.randint(0, len(bBoxes)-1)]  # 选择背景图上的一个边界框
+        bgObjBox = bBoxes[random.randint(0, len(bBoxes) - 1)]  # 选择背景图上的一个边界框
         left, right, down, up = bgObjBox[0] - objWidth, bgObjBox[2], bgObjBox[3], bgObjBox[1] - objHeight
         # 在b的四周随机选择一个位置
         choice = random.randint(0, 3)
@@ -102,7 +105,7 @@ def guidedInsertion(bgSize, bBoxes, box):
                     break
 
 
-def insertion(bgPath, Img, mask, bbox, genNum=1):
+def insertion(bgPath, Img, mask, bbox, genNum=1, saved=False):
     """
     background: 背景图名称: xxx.jpg or xxx
     Img: 包含待插入对象的原始图片
@@ -133,7 +136,8 @@ def insertion(bgPath, Img, mask, bbox, genNum=1):
             synImg = compose(Img, mask, background, posx - bbox[0], posy - bbox[1])
             plt.imshow(synImg)
             plt.show()
-            io.imsave(f'../results/synthesis/output_{i}.jpg', synImg)
+            if saved:
+                io.imsave(f'../results/synthesis/InsCar_{i}.jpg', synImg)
 
 
 def compose(foreground, mask, background, translateX=None, translateY=None):
@@ -179,6 +183,40 @@ def compose(foreground, mask, background, translateX=None, translateY=None):
     return composed_image
 
 
+# TODO: 缩放图片？
+def composeSkimage(foreground, mask, background, transX=0, transY=0):
+    """
+    对于前景图和背景图大小相等的合成
+    @param
+    foreground: 待插入对象所在的原始图片
+    mask: 待对象在原始图片的掩码
+    background: 待插入的背景图
+    transX: 需要平移的横向距离，向右为正
+    transY：需要平移的纵向距离，向下为正
+    """
+    # 平移前景图
+    tform = transform.AffineTransform(translation=(transX, transY))
+    foreAug = transform.warp(foreground, tform.inverse)
+    foreAug = img_as_ubyte(foreAug)
+    # foreAug = np.roll(foreground, transX, axis=1)
+    # foreAug = np.roll(foreAug, transY, axis=0)
+
+    # 平移mask
+    new_mask = np.roll(mask, transX, axis=1)  # 向右平移
+    new_mask = np.roll(new_mask, transY, axis=0)  # 向下平移
+
+    # subtract the foreground area from the background
+    background = background * (1 - new_mask.reshape(mask.shape[0], mask.shape[1], 1))
+    # extract the object from the foreground
+    foreAug = foreAug * new_mask.reshape(mask.shape[0], mask.shape[1], 1)
+
+    composed_image = background + foreAug
+    composed_image = composed_image.astype(np.uint8)
+    io.imshow(composed_image)
+    plt.show()
+    return composed_image
+
+
 # tested
 def testGuidedInsertion():
     background = io.imread('../images/bgfirst.jpg')
@@ -212,16 +250,29 @@ def testCompose():
     plt.show()
 
 
+# TODO: test guided insertion
 def testInsertion():
-    bgFilepath = '../images/bgfirst.jpg'
-    srcImgname = 'nadaer.jpg'
+    bgFilepath = '../images/background/bgfirst.jpg'
+    srcImgname = './nadaer.jpg'
     Img = io.imread(srcImgname)
-    objGen = loadObjImageInfo('nadaer')
-    _, _, _, box, mask = next(objGen)  # 读取带插入对象的信息
+    objGen = loadObjImageInfo()
+    _, _, box, mask = next(objGen)  # 读取带插入对象的信息
     insertion(bgFilepath, Img, mask, box, 2)
+
+
+# insert with translation but without scale
+def testInsertCar():
+    bgFilepath = '../images/background/bgfirst.jpg'
+    background = io.imread(bgFilepath)
+    srcImgname = '../images/objsrc2.jpg'
+    foreground = io.imread(srcImgname)
+    objGen = loadObjImageInfo('../results/json/', 'objsrc2_car')
+    _, _, box, mask = next(objGen)
+    composeSkimage(foreground, mask, background, 220, -40)
 
 
 if __name__ == '__main__':
     # testGuidedInsertion()
-    testInsertion()
+    # testInsertion()
     # testCompose()
+    testInsertCar()

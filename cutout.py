@@ -40,7 +40,7 @@ parser.add_argument('--save_lincomb', default=False, action='store_true', help='
 parser.add_argument('--no_crop', default=False, action='store_true',
                     help='Do not crop the output masks with the predicted bounding box.')
 parser.add_argument('--real_time', default=False, action='store_true', help='Show the detection results real-timely.')
-parser.add_argument('--visual_thre', default=0.3, type=float,
+parser.add_argument('--visual_thre', default=0.5, type=float,
                     help='Detections with a score under this threshold will be removed.')
 
 args = parser.parse_args()
@@ -64,13 +64,17 @@ def save(ids_p, class_p, box_p, masks_p, img_name):
     masks_p = masks_p.cpu().numpy()
     masks_p = masks_p.astype(np.uint8)
 
+    cates = {}
     for i, COCOId in enumerate(ids_p):
         # print(i, COCOclassId)
-        data = {"id": COCO_CLASSES[COCOId],  # 类名
+        COCOClassName = COCO_CLASSES[COCOId]
+        # 用于记录当前种类的个数
+        cates[COCOClassName] = cates.get(COCOClassName, -1) + 1
+        data = {"id": COCOClassName,  # 类名
                 "score": str(class_p[i]),
                 "bbox": box_p[i].tolist(),
                 "mask": [row.tolist() for row in masks_p[i]]}
-        f = open(f'results/json/{img_name}_{i}.json', 'w')
+        f = open(f'results/json/{img_name}_{COCOClassName}_{cates[COCOClassName]}.json', 'w')
         json.dump(data, f)
         print(f'{f.name} created.')
         f.close()
@@ -127,5 +131,6 @@ if __name__ == "__main__":
                     save(ids_p, class_p, boxes_p, masks_p, img_name)
 
                 # output the image with masks and bounding boxes
+                # if --cutout set to true, the cutout objects also be saved
                 img_numpy = draw_img(ids_p, class_p, boxes_p, masks_p, img_origin, cfg, img_name=img_name)
-                cv2.imwrite(f'results/images/{img_name}.jpg', img_numpy)
+                cv2.imwrite(f'results/images/{img_name}_detect.jpg', img_numpy)

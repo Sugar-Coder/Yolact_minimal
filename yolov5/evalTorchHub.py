@@ -8,8 +8,8 @@ from PIL import Image
 
 model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
 
-img1 = Image.open('../results/')
-img2 = Image.open('../results/')
+img1 = Image.open('../results/synthesis/output_0.jpg')
+img2 = Image.open('../results/synthesis/output_1.jpg')
 
 imgs = [img1, img2]
 
