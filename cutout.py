@@ -88,7 +88,7 @@ def saveBackground(ids_p, class_p, box_p, img_name):
     class_p = class_p.cpu().numpy()
     box_p = box_p.cpu().numpy()
 
-    f = open(f'results/json/{img_name}_background.json', 'a')
+    f = open(f'results/json/{img_name}.json', 'a')
 
     data = []
     for i, COCOID in enumerate(ids_p):

@@ -14,6 +14,7 @@ build_stuff/build
 *.so
 *.txt
 
+jsondata/
 .DS_Store
 *.jpg
 *.png

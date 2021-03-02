@@ -18,6 +18,17 @@ logging.basicConfig(level=logging.INFO)
 os.makedirs('../results/synthesis', exist_ok=True)
 
 
+def loadVanishingPoint(jsonFile='json/vps.json'):
+    with open(jsonFile, "r") as f:
+        data = json.load(f)
+        vps = []
+        for i in range(1, 4):
+            vps.append(data[f'vp{i}'])
+        return vps
+
+# TODO: 1、筛选灭点 2、按透视原理合成 3、oop 4、数据按文件夹分类
+
+
 def loadObjImageInfo(filepath='../results/json/', fileprefix='nadaer'):
     """
     A generator, every time called return one object's image and its information
@@ -31,15 +42,15 @@ def loadObjImageInfo(filepath='../results/json/', fileprefix='nadaer'):
         # objectImg = io.imread(f'{filepath}/../images/{originfile}_{i}.jpg')  # cutout后的合成的时候其实不需要
         # plt.imshow(objectImg)
         # plt.show()
-        f = open(f'{filepath}{fileprefix}_{i}.json', "r")
-        data = json.load(f)
-        f.close()
-        category = data['id']
-        mask = [np.array(w) for w in data['mask']]
-        mask = np.array(mask)
-        bbox = data['bbox']
-        score = float(data['score'])
-        yield category, score, bbox, mask
+        with open(f'{filepath}{fileprefix}_{i}.json', "r") as f:
+            data = json.load(f)
+            f.close()
+            category = data['id']
+            mask = [np.array(w) for w in data['mask']]
+            mask = np.array(mask)
+            bbox = data['bbox']
+            score = float(data['score'])
+            yield category, score, bbox, mask
 
 
 def guidedInsertion(bgSize, bBoxes, box):
@@ -67,6 +78,7 @@ def guidedInsertion(bgSize, bBoxes, box):
                 if box[0] < point[0] < box[2] and box[1] < point[1] < box[3]:  # 存在一个点在背景中的框内
                     return False
         return True
+    # end of checkInsertion()
 
     while True:
         bgObjBox = bBoxes[random.randint(0, len(bBoxes) - 1)]  # 选择背景图上的一个边界框
@@ -221,7 +233,7 @@ def composeSkimage(foreground, mask, background, transX=0, transY=0):
 def testGuidedInsertion():
     background = io.imread('../images/bgfirst.jpg')
     bgSize = background.shape[:2]
-    fname = '../results/json/bgfirst_background.json'
+    fname = '../results/json/bgfirst.json'
     f = open(fname, 'r')
     data = json.load(f)
     f.close()
