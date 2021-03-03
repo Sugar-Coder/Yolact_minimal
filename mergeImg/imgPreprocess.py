@@ -8,8 +8,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-img = io.imread('../images/bgfirst.jpg')
-newimg = img[:, 900:, :]
-plt.imshow(newimg)
-plt.show()
-io.imsave('../images/bgfirst1.jpg', newimg)
+def prune():
+    img = io.imread('../images/bgfirst.jpg')
+    newimg = img[:, 900:, :]
+    plt.imshow(newimg)
+    plt.show()
+    io.imsave('../images/bgfirst1.jpg', newimg)
