@@ -11,6 +11,7 @@ from scipy import ndimage
 
 
 # 按scale比例来缩放图片
+# TODO: exception
 def rescaleImage(origin, scale):
     # return ndimage.zoom(origin, [scale, scale, 1])  # too slow
     newimg = transform.rescale(origin, (scale, scale, 1))  # 变换后为float类型
@@ -23,9 +24,9 @@ def zoomMask(origin, zoom):
 
 
 # 两张任意大小的图片的合成
-def compose(foreground, mask, background, translateX=None, translateY=None):
+def compose(foreground, mask, background, translateX: int = None, translateY: int = None):
     """
-    translateX,Y: 在背景图上插入的点的位置（左上角）
+    translateX,Y: foreground需要平移的距离（左上角）
     """
     originalSize = mask.shape
     # 横向平移的距离
@@ -64,3 +65,10 @@ def compose(foreground, mask, background, translateX=None, translateY=None):
     composed_image = background + foreground
     composed_image = composed_image.astype(np.uint8)
     return composed_image
+
+
+# 获取mask的边界框
+def getBBoxFromMask(mask):
+    nz = np.nonzero(mask)  # 提取mask中非零像素的坐标
+    bbox = [np.min(nz[1]), np.min(nz[0]), np.max(nz[1]), np.max(nz[0])]
+    return bbox  # [x1, y1, x2, y2]
