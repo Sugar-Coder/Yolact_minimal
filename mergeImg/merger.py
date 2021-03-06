@@ -40,6 +40,10 @@ class Merger:
         self.objData = None
         self.bgBoxes = None
         self.prefix = self.bgName.split('/')[-1].split('.')[0]  # 背景图名无后缀
+        self.saveOutput = False
+
+    def setSave(self, save: bool):
+        self.saveOutput = save
 
     # 加载背景图的灭点信息，如果不指定，则选背景图生成的灭点
     # TODO: 生成的灭点按照原名称命名
@@ -95,7 +99,10 @@ class Merger:
         objWidth = bbox[2] - bbox[0]
         objHeight = bbox[3] - bbox[1]
 
-        count = 0
+        # 合成图片命名
+        count = len(glob.glob(f"./image/result/{self.prefix}_out_*.jpg"))
+        print("count is", count)
+
         for bgBox in self.bgBoxes:
 
             X2, Y1, scale = self.calcuPosition(VP, bgBox, bbox)
@@ -103,17 +110,20 @@ class Merger:
             newObjWidth = int(objWidth * scale)  # 放缩后对象的宽
             newObjHeight = int(objHeight * scale)  # 放缩后对象的高
 
-            newMask = imageUtil.zoomMask(mask, scale)  # 放缩掩码
-            zoomedBox = imageUtil.getBBoxFromMask(newMask)
-
             if self.checkInsertion(X2 - newObjWidth, Y1, newObjWidth, newObjHeight):
-                print(f"Insert to (x1={X2-newObjWidth} y1={Y1} width={newObjWidth} height={newObjHeight})")
+                print(f"Insert to (x1={X2 - newObjWidth} y1={Y1} width={newObjWidth} height={newObjHeight})")
+
+                newMask = imageUtil.zoomMask(mask, scale)  # 放缩掩码
+                zoomedBox = imageUtil.getBBoxFromMask(newMask)
                 newObjImg = imageUtil.rescaleImage(self.objImg, scale)
-                # TODO: 放大之后，前景图过大，需要剪裁
+
                 resultImg = imageUtil.compose(newObjImg, newMask, self.bgImg, X2 - zoomedBox[2], Y1 - zoomedBox[1])
 
                 filename = f"./image/result/{self.prefix}_out_{count}.jpg"
                 print(f"Synthesis image: {filename} created.")
+                if self.saveOutput:
+                    io.imsave(filename, resultImg)
+                    print(f"Synthesis image saved.")
 
                 plt.imshow(resultImg)
                 # 画出作为映射的背景对象
@@ -125,8 +135,8 @@ class Merger:
                     Rectangle((X2-newObjWidth, Y1), newObjWidth, newObjHeight, linewidth=1,
                               edgecolor='b', facecolor='none'))
                 plt.show()
-                # io.imsave(filename, resultImg)
-                plt.pause(5)
+                plt.waitforbuttonpress(timeout=-1)
+                # plt.pause(5)
 
                 choice = input("Continue?(y/n):")
                 if choice != 'Y' and choice != 'y':
@@ -213,5 +223,6 @@ if __name__ == "__main__":
     merger.loadObjectData()
     # print(merger.objData["id"])
     # plt.show()
+    # merger.setSave(True)
     merger.mergeByVP()
 

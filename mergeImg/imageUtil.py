@@ -27,8 +27,15 @@ def zoomMask(origin, zoom):
 def compose(foreground, mask, background, translateX: int = None, translateY: int = None):
     """
     translateX,Y: foreground需要平移的距离（左上角）
+    mask: 放缩后的mask
+    foreground: 放缩后的对象图
     """
     originalSize = mask.shape
+    objBox = getBBoxFromMask(mask)
+    # print("The mask shape:", mask.shape)
+    # print("The foreground shape:", foreground.shape)
+    # print("The objBox:", objBox)
+    bgSize = (background.shape[0], background.shape[1])  # (height, width)
     # 横向平移的距离
     if translateX is None:
         translateX = np.random.randint(background.shape[0] // 3, background.shape[0] - originalSize[0] - 1)
@@ -36,7 +43,17 @@ def compose(foreground, mask, background, translateX: int = None, translateY: in
     if translateY is None:
         translateY = np.random.randint(background.shape[1] // 3, background.shape[1] - originalSize[1] - 1)
 
-    bgSize = (background.shape[0], background.shape[1])  # (height, width)
+    translateX += objBox[0]
+    translateY += objBox[1]  # 将mask平移到左上角
+    # prune mask
+    mask = mask[objBox[1]:, objBox[0]:]  # 剪裁mask左上角的矩形 mask[height,width]
+    mask = mask[:bgSize[0], :bgSize[1]]  # 剪裁超出背景框的mask
+    # print(mask.shape)
+    # pune foreground
+    foreground = foreground[objBox[1]:, objBox[0]:, :]
+    foreground = foreground[:bgSize[0], :bgSize[1], :]
+    # print(foreground.shape)
+
     # extract the object from the foreground
     foreground = foreground * mask.reshape(mask.shape[0], mask.shape[1], 1)
 
